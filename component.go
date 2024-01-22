@@ -3,6 +3,7 @@ package sds011
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -97,11 +98,11 @@ func (c *component) startBgProcess() {
 }
 
 func (c *component) water() error {
-	sensePin, err := c.boardComponent.GPIOPinByName(string(c.cfg.SensePin))
+	sensePin, err := c.boardComponent.GPIOPinByName(fmt.Sprint(c.cfg.SensePin))
 	if err != nil {
 		return errors.Wrap(err, "sensepin")
 	}
-	pumpPin, err := c.boardComponent.GPIOPinByName(string(c.cfg.PumpPin))
+	pumpPin, err := c.boardComponent.GPIOPinByName(fmt.Sprint(c.cfg.PumpPin))
 	if err != nil {
 		return errors.Wrap(err, "pumppin")
 	}
