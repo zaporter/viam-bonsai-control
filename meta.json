@@ -1,0 +1,18 @@
+{
+  "module_id": "zack:bonsai-control",
+  "visibility": "private",
+  "url": "https://github.com/zaporter/viam-bonsai-control",
+  "description": "Specialized module to control my bonsai tree. Not useful for other people",
+  "models": [
+    {
+      "api": "rdk:component:sensor",
+      "model": "zack:bonsai:v1"
+    }
+  ],
+  "entrypoint": "./bin/module",
+  "build": {
+    "build": "make package",
+    "path": "build/module.tar.gz",
+    "arch": ["linux/amd64", "linux/arm64"]
+  }
+}
