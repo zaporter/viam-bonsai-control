@@ -107,6 +107,7 @@ func (c *component) water() error {
 		return errors.Wrap(err, "pumppin")
 	}
 
+	c.logger.Info("starting to water")
 	// make sure we set low at the end even in an error
 	defer pumpPin.Set(context.Background(), false, nil)
 
@@ -114,9 +115,9 @@ func (c *component) water() error {
 	ticker := time.NewTicker(time.Millisecond * 100)
 	defer ticker.Stop()
 	for time.Since(startTime) < time.Second*time.Duration(c.cfg.WaterDurationSeconds) {
+        c.logger.Infof("Time watered: %v. Time left: %v", time.Since(startTime), time.Since(startTime)-time.Second*time.Duration(c.cfg.WaterDurationSeconds))
 		select {
 		case <-ticker.C:
-			c.logger.Info("watering")
 			senseVal, err := sensePin.Get(c.cancelCtx, nil)
 			if err != nil {
 				c.logger.Errorw("error reading sense", "err", err)
