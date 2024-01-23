@@ -73,12 +73,12 @@ func createComponent(_ context.Context,
 }
 
 func (c *component) startBgProcess() {
-	c.logger.Info("starting a watering\n")
-	err := c.water()
-	if err != nil {
-		c.logger.Errorw("error watering", "err", err)
-	}
 	utils.PanicCapturingGo(func() {
+		c.logger.Info("starting a watering\n")
+		err := c.water()
+		if err != nil {
+			c.logger.Errorw("error watering", "err", err)
+		}
 		ticker := time.NewTicker(time.Second * time.Duration(c.cfg.WaterIntervalSeconds))
 		defer ticker.Stop()
 		for {
@@ -113,9 +113,13 @@ func (c *component) water() error {
 
 	startTime := time.Now()
 	ticker := time.NewTicker(time.Millisecond * 100)
+	i := 0
 	defer ticker.Stop()
 	for time.Since(startTime) < time.Second*time.Duration(c.cfg.WaterDurationSeconds) {
-        c.logger.Infof("Time watered: %v. Time left: %v", time.Since(startTime), time.Since(startTime)-time.Second*time.Duration(c.cfg.WaterDurationSeconds))
+		i += 1
+		if i%10 == 0 {
+			c.logger.Infof("Time watered: %v. Time left: %v", time.Since(startTime), time.Second*time.Duration(c.cfg.WaterDurationSeconds)-time.Since(startTime))
+		}
 		select {
 		case <-ticker.C:
 			senseVal, err := sensePin.Get(c.cancelCtx, nil)
