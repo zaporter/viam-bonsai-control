@@ -283,9 +283,7 @@ func drawToDisplay(line1 string, line2 string) error {
 	if err != nil {
 		panic(err)
 	}
-	defer oled.Close()
 
-	// Ensure the OLED is properly closed at the end of the program
 	defer oled.Close()
 
 // 	// Define a black color
