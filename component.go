@@ -106,7 +106,7 @@ func (c *component) startBgProcess() {
 					c.logger.Errorw("error watering", "err", err)
 				}
 				c.isWatering = false
-				if err := writeNextTime(time.Now().Add(time.Second * time.Duration(c.cfg.WaterIntervalSeconds))); err != nil {
+				if err := writeNextTime(nextWaterTime.Add(time.Second * time.Duration(c.cfg.WaterIntervalSeconds))); err != nil {
 					// it is dangerous to not set the next water time otherwise we could continuously water
 					c.logger.Fatalw("error setting next water time", "err", err)
 				}
