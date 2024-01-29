@@ -15,6 +15,15 @@ import (
 	"go.viam.com/rdk/logging"
 	"go.viam.com/rdk/resource"
 	"go.viam.com/utils"
+	"image"
+	"image/color"
+	"image/draw"
+
+	"github.com/waxdred/go-i2c-oled"
+	"github.com/waxdred/go-i2c-oled/ssd1306"
+	"golang.org/x/image/font"
+	"golang.org/x/image/font/basicfont"
+	"golang.org/x/image/math/fixed"
 )
 
 var (
@@ -91,6 +100,9 @@ func (c *component) startBgProcess() {
 		for {
 			select {
 			case <-ticker.C:
+				if err := c.PushStats(); err != nil {
+					c.logger.Errorw("error pushing stats", "err", err)
+				}
 				nextWaterTime, err := readNextTime()
 				if err != nil {
 					c.logger.Errorw("error reading next water time", "err", err)
@@ -164,6 +176,9 @@ func (c *component) water() error {
 		}
 		select {
 		case <-ticker.C:
+			if err := c.PushStats(); err != nil {
+				c.logger.Errorw("error pushing stats", "err", err)
+			}
 			senseVal, err := sensePin.Get(c.cancelCtx, nil)
 			if err != nil {
 				c.logger.Errorw("error reading sense", "err", err)
@@ -217,6 +232,19 @@ func (c *component) Readings(ctx context.Context, extra map[string]interface{}) 
 	}
 }
 
+func (c *component) PushStats() error {
+	if c.isWatering {
+		return drawToDisplay("Time left:", ((time.Second * time.Duration(c.cfg.WaterDurationSeconds)) - time.Since(c.wateringStart)).Round(time.Second).String())
+
+	} else {
+		nextWaterTime, err := readNextTime()
+		if err != nil {
+			return err
+		}
+		return drawToDisplay("Time till water:", time.Until(nextWaterTime).Round(time.Second).String())
+	}
+}
+
 // DoCommand sends/receives arbitrary data.
 func (c *component) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
 	return make(map[string]interface{}), nil
@@ -241,4 +269,62 @@ func (c *component) Close(ctx context.Context) error {
 	}
 	c.logger.Info("closing\n")
 	return nil
+}
+
+func drawToDisplay(line1 string, line2 string) error {
+
+	// Initialize the OLED display with the provided parameters
+	oled, err := goi2coled.NewI2c(ssd1306.SSD1306_SWITCHCAPVCC, 32, 128, 0x3C, 1)
+	if err != nil {
+		panic(err)
+	}
+	defer oled.Close()
+
+	// Ensure the OLED is properly closed at the end of the program
+	defer oled.Close()
+
+	// Define a black color
+	black := color.RGBA{0, 0, 0, 255}
+
+	// Set the entire OLED image to black
+	draw.Draw(oled.Img, oled.Img.Bounds(), &image.Uniform{black}, image.Point{}, draw.Src)
+
+	// Define a white color
+	colWhite := color.RGBA{255, 255, 255, 255}
+
+	// Set the starting point for drawing text
+	point := fixed.Point26_6{fixed.Int26_6(0 * 64), fixed.Int26_6(15 * 64)} // x = 0, y = 15
+
+	// Configure the font drawer with the chosen font and color
+	drawer := &font.Drawer{
+		Dst:  oled.Img,
+		Src:  &image.Uniform{colWhite},
+		Face: basicfont.Face7x13,
+		Dot:  point,
+	}
+
+	// Clear the OLED image (making it all black)
+	draw.Draw(oled.Img, oled.Img.Bounds(), &image.Uniform{color.Black}, image.Point{}, draw.Src)
+
+	// Draw the text "Hello" on the OLED image
+	drawer.DrawString(line1)
+
+	// Move the drawing point down by 10 pixels for the next line of text
+	drawer.Dot.Y += fixed.Int26_6(10 * 64)
+
+	// Set the drawing point's x coordinate back to 0 for alignment
+	drawer.Dot.X = fixed.Int26_6(0 * 64)
+
+	// Draw the text "From golang!" on the OLED image
+	drawer.DrawString(line2)
+
+	// Clear the OLED's buffer (if applicable to your library)
+	oled.Clear()
+
+	// Update the OLED's buffer with the current image data
+	oled.Draw()
+
+	// Display the buffered content on the OLED screen
+	err = oled.Display()
+	return err
 }

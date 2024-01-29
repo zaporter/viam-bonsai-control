@@ -10,8 +10,10 @@ require (
 	github.com/golangci/golangci-lint v1.51.2
 	github.com/pkg/errors v0.9.1
 	github.com/rhysd/actionlint v1.6.24
+	github.com/waxdred/go-i2c-oled v1.0.1
 	go.viam.com/rdk v0.18.0
 	go.viam.com/utils v0.1.54
+	golang.org/x/image v0.12.0
 	gotest.tools/gotestsum v1.10.0
 )
 
@@ -274,7 +276,6 @@ require (
 	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea // indirect
 	golang.org/x/exp/typeparams v0.0.0-20230203172020-98cc5a0785f9 // indirect
-	golang.org/x/image v0.12.0 // indirect
 	golang.org/x/mod v0.11.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/oauth2 v0.10.0 // indirect
