@@ -4,6 +4,8 @@ package sds011
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/pkg/errors"
@@ -16,7 +18,8 @@ import (
 )
 
 var (
-	Model = resource.NewModel("zaporter", "bonsai", "v1")
+	Model   = resource.NewModel("zaporter", "bonsai", "v1")
+	DataDir = os.Getenv("VIAM_MODULE_DATA")
 )
 
 func init() {
@@ -41,7 +44,9 @@ type component struct {
 	cancelCtx      context.Context
 	cancelFunc     func()
 
-	logger logging.Logger
+	logger        logging.Logger
+	isWatering    bool
+	wateringStart time.Time
 }
 
 func createComponent(_ context.Context,
@@ -67,6 +72,7 @@ func createComponent(_ context.Context,
 		cancelCtx:      cancelCtx,
 		cancelFunc:     cancelFunc,
 		logger:         logger,
+		isWatering:     false,
 	}
 	instance.startBgProcess()
 	return instance, nil
@@ -74,20 +80,34 @@ func createComponent(_ context.Context,
 
 func (c *component) startBgProcess() {
 	utils.PanicCapturingGo(func() {
-		c.logger.Info("starting a watering\n")
-		err := c.water()
-		if err != nil {
-			c.logger.Errorw("error watering", "err", err)
+		if err := ensureNextWaterTime(time.Now().Add(time.Second * time.Duration(c.cfg.WaterIntervalSeconds))); err != nil {
+			// it is dangerous to not set the next water time otherwise we could continuously water
+			c.logger.Fatalw("error setting next water time", "err", err)
 		}
-		ticker := time.NewTicker(time.Second * time.Duration(c.cfg.WaterIntervalSeconds))
+		// check every 5 seconds
+		ticker := time.NewTicker(time.Second * 5)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
-				c.logger.Info("starting a watering\n")
-				err := c.water()
+				nextWaterTime, err := readNextTime()
 				if err != nil {
+					c.logger.Errorw("error reading next water time", "err", err)
+					continue
+				}
+				if nextWaterTime.After(time.Now()) {
+					continue
+				}
+
+				c.logger.Info("starting a watering\n")
+				c.isWatering = true
+				if err := c.water(); err != nil {
 					c.logger.Errorw("error watering", "err", err)
+				}
+				c.isWatering = false
+				if err := writeNextTime(time.Now().Add(time.Second * time.Duration(c.cfg.WaterIntervalSeconds))); err != nil {
+					// it is dangerous to not set the next water time otherwise we could continuously water
+					c.logger.Fatalw("error setting next water time", "err", err)
 				}
 			case <-c.cancelCtx.Done():
 				c.logger.Info("shutdown")
@@ -95,6 +115,26 @@ func (c *component) startBgProcess() {
 			}
 		}
 	})
+}
+
+func writeNextTime(nextTime time.Time) error {
+	return os.WriteFile(filepath.Join(DataDir, "time.txt"), []byte(nextTime.Format(time.RFC3339)), 0o700)
+}
+
+func readNextTime() (time.Time, error) {
+	contents, err := os.ReadFile(filepath.Join(DataDir, "time.txt"))
+	if err != nil {
+		return time.Now(), err
+	}
+	return time.Parse(time.RFC3339, string(contents))
+}
+
+// if the file doesn't exist, write it
+func ensureNextWaterTime(nextTime time.Time) error {
+	if _, err := readNextTime(); err != nil {
+		return writeNextTime(nextTime)
+	}
+	return nil
 }
 
 func (c *component) water() error {
@@ -107,6 +147,7 @@ func (c *component) water() error {
 		return errors.Wrap(err, "pumppin")
 	}
 
+	c.wateringStart = time.Now()
 	c.logger.Info("starting to water")
 	// make sure we set low at the end even in an error
 	defer pumpPin.Set(context.Background(), false, nil)
@@ -158,11 +199,21 @@ func (c *component) water() error {
 }
 
 func (c *component) Readings(ctx context.Context, extra map[string]interface{}) (map[string]interface{}, error) {
-	return map[string]interface{}{
-		"pm_10":  10.0,
-		"pm_2.5": 15.0,
-		"units":  "μg/m³",
-	}, nil
+	if c.isWatering {
+		return map[string]interface{}{
+			"water time left": (time.Second * time.Duration(c.cfg.WaterDurationSeconds)) - time.Since(c.wateringStart),
+		}, nil
+
+	} else {
+		nextWaterTime, err := readNextTime()
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{
+			"next water time":      nextWaterTime.Format(time.RFC3339),
+			"time till next water": time.Until(nextWaterTime).String(),
+		}, nil
+	}
 }
 
 // DoCommand sends/receives arbitrary data.
@@ -175,6 +226,18 @@ func (c *component) DoCommand(ctx context.Context, cmd map[string]interface{}) (
 // Later reconfiguration may allow a resource to be "open" again.
 func (c *component) Close(ctx context.Context) error {
 	c.cancelFunc()
+
+	// ensure we turn off the pump in case it is accidentally still on
+	pumpPin, err := c.boardComponent.GPIOPinByName(fmt.Sprint(c.cfg.PumpPin))
+	if err != nil {
+		return errors.Wrap(err, "pump pin")
+	}
+	err = pumpPin.Set(context.Background(), false, nil)
+	if err != nil {
+		// TODO: power off the device.
+		// if we don't have control of the pump, the pi could be damaged
+		return errors.Wrap(err, "failed to set pump pin to low")
+	}
 	c.logger.Info("closing\n")
 	return nil
 }
