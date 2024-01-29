@@ -74,16 +74,17 @@ func createComponent(_ context.Context,
 		logger:         logger,
 		isWatering:     false,
 	}
+
+	if err := ensureNextWaterTime(time.Now().Add(time.Second * time.Duration(instance.cfg.WaterIntervalSeconds))); err != nil {
+		// it is dangerous to not set the next water time otherwise we could continuously water
+		instance.logger.Fatalw("error setting next water time", "err", err)
+	}
 	instance.startBgProcess()
 	return instance, nil
 }
 
 func (c *component) startBgProcess() {
 	utils.PanicCapturingGo(func() {
-		if err := ensureNextWaterTime(time.Now().Add(time.Second * time.Duration(c.cfg.WaterIntervalSeconds))); err != nil {
-			// it is dangerous to not set the next water time otherwise we could continuously water
-			c.logger.Fatalw("error setting next water time", "err", err)
-		}
 		// check every 5 seconds
 		ticker := time.NewTicker(time.Second * 5)
 		defer ticker.Stop()
