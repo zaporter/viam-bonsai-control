@@ -96,12 +96,17 @@ func (c *component) startBgProcess() {
 	utils.PanicCapturingGo(func() {
 		// check every 5 seconds
 		ticker := time.NewTicker(time.Second * 5)
+
 		defer ticker.Stop()
+		i := 0
 		for {
 			select {
 			case <-ticker.C:
-				if err := c.PushStats(); err != nil {
-					c.logger.Errorw("error pushing stats", "err", err)
+				i += 1
+				if i%2 == 0 {
+					if err := c.PushStats(); err != nil {
+						c.logger.Errorw("error pushing stats", "err", err)
+					}
 				}
 				nextWaterTime, err := readNextTime()
 				if err != nil {
@@ -171,14 +176,14 @@ func (c *component) water() error {
 	defer ticker.Stop()
 	for time.Since(startTime) < time.Second*time.Duration(c.cfg.WaterDurationSeconds) {
 		i += 1
-		if i%10 == 0 {
+		if i%20 == 0 {
+			if err := c.PushStats(); err != nil {
+				c.logger.Errorw("error pushing stats", "err", err)
+			}
 			c.logger.Infof("Time watered: %v. Time left: %v", time.Since(startTime), time.Second*time.Duration(c.cfg.WaterDurationSeconds)-time.Since(startTime))
 		}
 		select {
 		case <-ticker.C:
-			if err := c.PushStats(); err != nil {
-				c.logger.Errorw("error pushing stats", "err", err)
-			}
 			senseVal, err := sensePin.Get(c.cancelCtx, nil)
 			if err != nil {
 				c.logger.Errorw("error reading sense", "err", err)
@@ -283,11 +288,11 @@ func drawToDisplay(line1 string, line2 string) error {
 	// Ensure the OLED is properly closed at the end of the program
 	defer oled.Close()
 
-	// Define a black color
-	black := color.RGBA{0, 0, 0, 255}
+// 	// Define a black color
+// 	black := color.RGBA{0, 0, 0, 255}
 
-	// Set the entire OLED image to black
-	draw.Draw(oled.Img, oled.Img.Bounds(), &image.Uniform{black}, image.Point{}, draw.Src)
+// 	// Set the entire OLED image to black
+// 	draw.Draw(oled.Img, oled.Img.Bounds(), &image.Uniform{black}, image.Point{}, draw.Src)
 
 	// Define a white color
 	colWhite := color.RGBA{255, 255, 255, 255}
