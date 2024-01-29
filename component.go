@@ -202,7 +202,7 @@ func (c *component) water() error {
 func (c *component) Readings(ctx context.Context, extra map[string]interface{}) (map[string]interface{}, error) {
 	if c.isWatering {
 		return map[string]interface{}{
-			"water time left": ((time.Second * time.Duration(c.cfg.WaterDurationSeconds)) - time.Since(c.wateringStart)).String(),
+			"water time left": ((time.Second * time.Duration(c.cfg.WaterDurationSeconds)) - time.Since(c.wateringStart)).Round(time.Second).String(),
 		}, nil
 
 	} else {
@@ -212,7 +212,7 @@ func (c *component) Readings(ctx context.Context, extra map[string]interface{}) 
 		}
 		return map[string]interface{}{
 			"next water time":      nextWaterTime.Format(time.RFC3339),
-			"time till next water": time.Until(nextWaterTime).String(),
+			"time till next water": time.Until(nextWaterTime).Round(time.Second).String(),
 		}, nil
 	}
 }
