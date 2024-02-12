@@ -231,7 +231,7 @@ func (c *component) Readings(ctx context.Context, extra map[string]interface{}) 
 			return nil, err
 		}
 		return map[string]interface{}{
-			"next water time":      nextWaterTime.Format(time.RFC3339),
+			"next water time":      nextWaterTime.Format(time.RFC1123),
 			"time till next water": time.Until(nextWaterTime).Round(time.Second).String(),
 		}, nil
 	}
