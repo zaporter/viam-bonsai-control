@@ -11,7 +11,7 @@
   ],
   "entrypoint": "./bin/module",
   "build": {
-    "setup":"cat $CIRCLE_INTERNAL_CONFIG",
+    "setup":"ls -alh /tmp/",
     "build": "make package",
     "path": "build/module.tar.gz",
     "arch": ["linux/amd64", "linux/arm64"]
