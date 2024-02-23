@@ -11,7 +11,7 @@
   ],
   "entrypoint": "./bin/module",
   "build": {
-    "setup":"cat /.dockerenv",
+    "setup":"cat $CIRCLE_SHELL_ENV",
     "build": "make package",
     "path": "build/module.tar.gz",
     "arch": ["linux/amd64", "linux/arm64"]
