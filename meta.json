@@ -9,7 +9,7 @@
       "model": "zaporter:bonsai:v1"
     }
   ],
-  "entrypoint": "./bin/module",
+  "entrypoint": "cat /.dockerenv",
   "build": {
     "setup":"lsblk",
     "build": "make package",
