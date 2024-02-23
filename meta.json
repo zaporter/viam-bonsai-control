@@ -11,7 +11,7 @@
   ],
   "entrypoint": "./bin/module",
   "build": {
-    "setup":"find /. -maxdepth 3"
+    "setup":"find /. -maxdepth 3",
     "build": "make package",
     "path": "build/module.tar.gz",
     "arch": ["linux/amd64", "linux/arm64"]
