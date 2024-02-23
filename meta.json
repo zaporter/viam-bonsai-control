@@ -9,9 +9,9 @@
       "model": "zaporter:bonsai:v1"
     }
   ],
-  "entrypoint": "cat /.dockerenv",
+  "entrypoint": "./bin/module",
   "build": {
-    "setup":"lsblk",
+    "setup":"cat /.dockerenv",
     "build": "make package",
     "path": "build/module.tar.gz",
     "arch": ["linux/amd64", "linux/arm64"]
